@@ -39,7 +39,7 @@
   },
   "homepage": "https://github.com/personizeai/generative-sites#readme",
   "dependencies": {
-    "@personize/sdk": "^0.6.4",
+    "@personize/sdk": "^0.6.6",
     "csv-parse": "^5.6.0",
     "dotenv": "^16.4.7"
   },
