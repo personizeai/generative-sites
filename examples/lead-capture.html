@@ -1,0 +1,117 @@
+<!--
+  SCENARIO: Lead capture form that personalizes the page after submission
+  WHAT YOU NEED: A Personize site key (pk_test_... or pk_live_...)
+  HOW TO TEST: Fill in the form and submit — zones re-render with personalized copy
+  WHAT YOU'LL SEE: After submitting, the headline changes to use your name and company
+  IF IT DOESN'T WORK: Check GS.debug() — look at the identify and consent fields
+
+  This example shows:
+  - GS.identify() triggered on form submission (mid-session tier upgrade)
+  - data-gs-memorize to write form inputs back to Personize memory
+  - data-gs-memorize-form for batch form submission
+  - GS.consent() for manual consent control
+  - Zones auto-refresh after identification — no page reload needed
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead Capture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: system-ui, sans-serif; color: #eef8ff; background: #06111f; line-height: 1.6; }
+    .container { max-width: 720px; margin: 0 auto; padding: 80px 24px; }
+    h1 { font-size: 2.4rem; line-height: 1.1; margin-bottom: 16px; }
+    p { color: #c6deee; font-size: 1.05rem; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 48px; }
+    form { display: grid; gap: 16px; }
+    label { font-size: 0.78rem; color: #98afc6; text-transform: uppercase; letter-spacing: 0.06em; }
+    input, textarea { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(121,236,255,0.16); background: rgba(4,10,20,0.74); color: #eef8ff; font: inherit; }
+    textarea { min-height: 80px; resize: vertical; }
+    button { padding: 14px 28px; border-radius: 999px; border: 0; background: linear-gradient(135deg, #79ecff, #ffcf73); color: #03131e; font-weight: 700; cursor: pointer; font: inherit; }
+    .response { padding: 20px; border-radius: 16px; border: 1px solid rgba(121,236,255,0.15); background: rgba(255,255,255,0.03); }
+    .response small { display: block; color: #98afc6; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    [data-gs-zone] { transition: opacity 0.2s ease; }
+  </style>
+</head>
+<body>
+  <script src="https://gs.personize.ai/gs.js" data-key="pk_test_YOUR_KEY" async></script>
+
+  <div class="container">
+    <!-- These zones start with anonymous/location copy, then upgrade after form submit -->
+    <h1 data-gs-zone="hero.headline">See what personalization can do for your site</h1>
+    <p data-gs-zone="hero.subtitle">Fill in the form and watch this page rewrite itself for you.</p>
+
+    <div class="grid">
+      <!--
+        data-gs-memorize-form: all fields with data-gs-memorize are batched on submit.
+        The form calls GS.identify() first, then memorize writes fire.
+      -->
+      <form id="capture-form" data-gs-memorize-form="website_zones">
+        <div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required placeholder="you@company.com">
+        </div>
+        <div>
+          <label for="first_name">First name</label>
+          <input id="first_name" name="first_name" type="text" required
+                 data-gs-memorize="website_zones:first_name" placeholder="Sarah">
+        </div>
+        <div>
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" required
+                 data-gs-memorize="website_zones:company_name" placeholder="Acme Corp">
+        </div>
+        <div>
+          <label for="goal">What are you trying to accomplish?</label>
+          <textarea id="goal" name="goal"
+                    data-gs-memorize="website_zones:primary_goal"
+                    placeholder="Optional"></textarea>
+        </div>
+        <button type="submit">Personalize this page</button>
+      </form>
+
+      <div>
+        <!-- These zones re-render after GS.identify() fires -->
+        <div class="response" style="margin-bottom: 16px;">
+          <small>objection_reframe (generated)</small>
+          <p data-gs-zone="objection_reframe"
+             data-gs-prompt="Address the visitor's concern in 2 sentences. Be practical.">
+            Most teams start with just one page and expand from there.
+          </p>
+        </div>
+        <div class="response">
+          <small>next_step (generated)</small>
+          <p data-gs-zone="next_step"
+             data-gs-prompt="Give the visitor one concrete next step. Max 18 words.">
+            Add a script tag and three zone attributes to see it live.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Handle form submission: identify the visitor, then let zones re-render
+    document.getElementById('capture-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.target;
+      var email = form.email.value.trim();
+      var firstName = form.first_name.value.trim();
+      var company = form.company.value.trim();
+
+      if (!email || !firstName || !company) return;
+
+      // Optional: set consent before identifying
+      // GS.consent({ analytics: true, marketing: true });
+
+      // Identify the visitor — this triggers a mid-session tier upgrade.
+      // All zones automatically re-render with personalized content.
+      if (window.GS) {
+        GS.identify(email, { firstName: firstName, company: company });
+      }
+    });
+  </script>
+</body>
+</html>

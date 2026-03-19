@@ -1,0 +1,51 @@
+<!--
+  SCENARIO: Anonymous website personalization
+  WHAT YOU NEED: A Personize site key (pk_test_... or pk_live_...)
+  HOW TO TEST: Replace YOUR_KEY below, open this file in a browser
+  WHAT YOU'LL SEE: Headline and copy adapt to your location (city/region)
+  IF IT DOESN'T WORK: Fallback text stays. Open DevTools, type GS.debug()
+
+  This example shows:
+  - Structured zones (hero.headline + hero.subtitle + hero.cta) generated as one coherent group
+  - A flat zone with a custom prompt (data-gs-prompt)
+  - No identification needed — works for 100% of visitors via location
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Basic Personalization</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: system-ui, sans-serif; color: #eef8ff; background: #06111f; line-height: 1.6; }
+    .container { max-width: 720px; margin: 0 auto; padding: 80px 24px; }
+    h1 { font-size: 2.4rem; line-height: 1.1; margin-bottom: 16px; }
+    p { color: #c6deee; font-size: 1.1rem; margin-bottom: 20px; }
+    .cta { display: inline-block; padding: 14px 28px; border-radius: 999px; background: linear-gradient(135deg, #79ecff, #ffcf73); color: #03131e; font-weight: 700; text-decoration: none; }
+    .proof { margin-top: 48px; padding: 20px; border-radius: 16px; border: 1px solid rgba(121,236,255,0.15); background: rgba(255,255,255,0.03); }
+    .proof small { display: block; color: #98afc6; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    [data-gs-zone] { transition: opacity 0.2s ease; }
+  </style>
+</head>
+<body>
+  <!-- Load gs.js — replace YOUR_KEY with your Personize site key -->
+  <script src="https://gs.personize.ai/gs.js" data-key="pk_test_YOUR_KEY" async></script>
+
+  <div class="container">
+    <!-- Structured zones: hero.* fields are generated together in one AI call -->
+    <h1 data-gs-zone="hero.headline">Welcome to our platform</h1>
+    <p data-gs-zone="hero.subtitle">We help teams ship faster with less overhead.</p>
+    <a class="cta" href="#"><span data-gs-zone="hero.cta">Get Started</span></a>
+
+    <!-- Flat zone with a custom prompt -->
+    <div class="proof">
+      <small>social proof</small>
+      <p data-gs-zone="proof"
+         data-gs-prompt="Write one sentence of social proof mentioning the visitor's city if known, otherwise their region. Do not invent company names.">
+        Trusted by teams worldwide.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

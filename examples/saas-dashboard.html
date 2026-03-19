@@ -1,0 +1,85 @@
+<!--
+  SCENARIO: Logged-in SaaS dashboard with personalized greeting
+  WHAT YOU NEED: A Personize site key + a logged-in user session
+  HOW TO TEST: Replace the __GS_USER__ object with your test user's data
+  WHAT YOU'LL SEE: Dashboard greeting and insight tailored to the user
+  IF IT DOESN'T WORK: Fallback text stays. Check GS.debug() — verify auth is populated
+
+  This example shows:
+  - window.__GS_USER__ for auth-based identification (highest priority)
+  - Property zones for instant, deterministic dashboard content
+  - Structured zones for AI-generated insights
+  - No URL params needed — identity comes from the session
+
+  In a real app (Next.js, React, etc.), you'd inject __GS_USER__ server-side:
+
+    <script dangerouslySetInnerHTML={{ __html:
+      `window.__GS_USER__ = ${JSON.stringify({
+        email: session.user.email,
+        firstName: session.user.name,
+        company: session.user.org,
+      })};`
+    }} />
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: system-ui, sans-serif; color: #eef8ff; background: #06111f; line-height: 1.6; }
+    .container { max-width: 720px; margin: 0 auto; padding: 80px 24px; }
+    h1 { font-size: 2rem; line-height: 1.2; margin-bottom: 8px; }
+    p { color: #c6deee; font-size: 1.05rem; margin-bottom: 20px; }
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 32px; }
+    .card { padding: 20px; border-radius: 16px; border: 1px solid rgba(121,236,255,0.15); background: rgba(255,255,255,0.03); }
+    .card small { display: block; color: #98afc6; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .nav { padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 40px; color: #98afc6; font-size: 0.9rem; }
+    [data-gs-zone] { transition: opacity 0.2s ease; }
+  </style>
+</head>
+<body>
+  <!--
+    Auth session: inject the logged-in user's identity before gs.js loads.
+    In production, this comes from your server (session, JWT, etc.)
+  -->
+  <script>
+    window.__GS_USER__ = {
+      email: 'maya@orbitstack.io',
+      firstName: 'Maya',
+      company: 'OrbitStack'
+    };
+  </script>
+  <script src="https://gs.personize.ai/gs.js" data-key="pk_test_YOUR_KEY" async></script>
+
+  <div class="container">
+    <div class="nav">OrbitStack Dashboard</div>
+
+    <!-- Property zone: instant greeting from Personize memory -->
+    <h1 data-gs-zone="dashboard:greeting"
+        data-gs-identify="dashboard:email">
+      Welcome back
+    </h1>
+
+    <!-- Structured zones: AI-generated insights based on user context -->
+    <p data-gs-zone="insight.summary">Here's what happened since your last visit.</p>
+
+    <div class="cards">
+      <div class="card">
+        <small>insight.highlight</small>
+        <p data-gs-zone="insight.highlight">
+          Your team's usage is trending up this week.
+        </p>
+      </div>
+      <div class="card">
+        <small>insight.recommendation</small>
+        <p data-gs-zone="insight.recommendation">
+          Consider exploring our batch processing features.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

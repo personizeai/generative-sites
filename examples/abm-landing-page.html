@@ -1,0 +1,75 @@
+<!--
+  SCENARIO: Personalized ABM landing page
+  WHAT YOU NEED: A Personize site key + website_zones collection with contacts seeded
+  HOW TO TEST: Visit this page at /for/sarah-chen or ?slug=sarah-chen
+  WHAT YOU'LL SEE: All zones fill with Sarah's pre-written copy from Personize memory
+  IF IT DOESN'T WORK: Fallback text stays. Run `npm run setup && npm run seed` first
+
+  This example shows:
+  - Property zones (website_zones:hero_headline) — instant, no LLM at serve time
+  - data-gs-identify for slug-based visitor lookup
+  - Flat generative zones that mix with property zones on the same page
+  - The /for/:slug URL pattern for shareable ABM links
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ABM Landing Page</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: system-ui, sans-serif; color: #eef8ff; background: #06111f; line-height: 1.6; }
+    .container { max-width: 720px; margin: 0 auto; padding: 80px 24px; }
+    h1 { font-size: 2.4rem; line-height: 1.1; margin-bottom: 16px; }
+    p { color: #c6deee; font-size: 1.1rem; margin-bottom: 20px; }
+    .cta { display: inline-block; padding: 14px 28px; border-radius: 999px; background: linear-gradient(135deg, #79ecff, #ffcf73); color: #03131e; font-weight: 700; text-decoration: none; }
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; }
+    .card { padding: 20px; border-radius: 16px; border: 1px solid rgba(121,236,255,0.15); background: rgba(255,255,255,0.03); }
+    .card small { display: block; color: #98afc6; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    [data-gs-zone] { transition: opacity 0.2s ease; }
+  </style>
+</head>
+<body>
+  <script src="https://gs.personize.ai/gs.js" data-key="pk_test_YOUR_KEY" async></script>
+
+  <div class="container">
+    <!--
+      Property zones: website_zones:* reads directly from the contact's record.
+      data-gs-identify tells gs-edge to look up the contact by their slug.
+      The slug value comes from the URL: /for/sarah-chen or ?slug=sarah-chen
+    -->
+    <h1 data-gs-zone="website_zones:hero_headline"
+        data-gs-identify="website_zones:slug">
+      See how we can help your team
+    </h1>
+
+    <p data-gs-zone="website_zones:sub_headline">
+      The modern platform for teams that want to move faster.
+    </p>
+
+    <a class="cta" href="#">
+      <span data-gs-zone="website_zones:cta_text">Book a Demo</span>
+    </a>
+
+    <div class="cards">
+      <!-- Property zone: pre-written proof from Personize memory -->
+      <div class="card">
+        <small>website_zones:proof</small>
+        <p data-gs-zone="website_zones:proof">
+          Trusted by teams building the next generation of products.
+        </p>
+      </div>
+
+      <!-- Flat generative zone: AI-written at serve time using visitor context -->
+      <div class="card">
+        <small>objection_reframe (generated)</small>
+        <p data-gs-zone="objection_reframe"
+           data-gs-prompt="Address the visitor's biggest blocker in 2 sentences. Keep the tone practical, not salesy.">
+          We make it easy to get started without a full rewrite.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "name": "generative-sites",
+  "version": "1.0.0",
+  "description": "AI-personalized website text zones. Drop a script tag, mark elements, get personalized copy.",
+  "main": "gs.js",
+  "type": "module",
+  "directories": {
+    "doc": "docs",
+    "example": "examples"
+  },
+  "scripts": {
+    "build": "esbuild gs.js --bundle --minify --sourcemap --outfile=dist/gs.min.js --format=iife",
+    "build:dev": "esbuild gs.js --bundle --outfile=dist/gs.js --format=iife",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "setup": "npx tsx setup/create-schemas.ts && npx tsx setup/create-governance.ts",
+    "setup:schemas": "npx tsx setup/create-schemas.ts",
+    "setup:governance": "npx tsx setup/create-governance.ts",
+    "seed": "npx tsx setup/seed-contacts.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/personizeai/generative-sites.git"
+  },
+  "keywords": [
+    "personalization",
+    "website",
+    "ai",
+    "zones",
+    "sse",
+    "personize"
+  ],
+  "author": "Personize (https://personize.ai)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/personizeai/generative-sites/issues"
+  },
+  "homepage": "https://github.com/personizeai/generative-sites#readme",
+  "dependencies": {
+    "@personize/sdk": "^0.6.4",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.27.4",
+    "jsdom": "^25.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
