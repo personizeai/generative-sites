@@ -6,7 +6,8 @@ AI-personalized text zones for any website. One script tag, HTML attributes, no 
 > Want to collaborate closely? [Let us know](CONTRIBUTING.md#collaborate-closely) · [Become a sponsor](CONTRIBUTING.md#sponsors)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](.github/workflows/ci.yml)
+![Status: Early Access](https://img.shields.io/badge/status-early%20access-orange.svg)
+![Tests: 89 passing](https://img.shields.io/badge/tests-89%20passing-brightgreen.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg?logo=typescript&logoColor=white)](tsconfig.json)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
