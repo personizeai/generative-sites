@@ -507,8 +507,28 @@
      * Identify a visitor. Triggers mid-session tier upgrade —
      * zones auto-refresh with personalized content.
      */
-    identify: function (email, traits) {
-      if (!email) return;
+    /**
+     * Identify a visitor with one or more match keys.
+     *
+     * Supports two call signatures:
+     *   GS.identify("email@example.com", { firstName: "Don" })          // legacy
+     *   GS.identify({ email: "don@lift.ai", website: "https://lift.ai" }, { firstName: "Don" })  // multi-key
+     *
+     * Any key names are accepted — email, website, phone, hubspot_id, etc.
+     */
+    identify: function (keysOrEmail, traits) {
+      // Normalize: string → { email: string }, object → pass through
+      var matchKeys;
+      if (typeof keysOrEmail === 'string') {
+        if (!keysOrEmail) return;
+        matchKeys = { email: keysOrEmail };
+      } else if (keysOrEmail && typeof keysOrEmail === 'object') {
+        matchKeys = keysOrEmail;
+        if (Object.keys(matchKeys).length === 0) return;
+      } else {
+        return;
+      }
+
       if (!isAllowed('identify')) {
         console.debug('[GS] identify() blocked by consent settings');
         return;
@@ -520,27 +540,28 @@
         navigator.sendBeacon(
           config.endpoint + '/api/gs/identify',
           new Blob([JSON.stringify({
-            key: config.key, uid: getCookie('_gs_uid'), email: email, traits: traits || {},
+            key: config.key, uid: getCookie('_gs_uid'), matchKeys: matchKeys, traits: traits || {},
           })], { type: 'application/json' })
         );
       } catch (e) {}
 
-      fireCallback('identify', { email: email, traits: traits });
+      fireCallback('identify', { matchKeys: matchKeys, traits: traits });
 
       // [MID-SESSION UPGRADE] — set auth and refresh all zones
       // so they re-render with the newly identified contact's data
       window.__GS_USER__ = window.__GS_USER__ || {};
-      window.__GS_USER__.email = email;
+      if (matchKeys.email) window.__GS_USER__.email = matchKeys.email;
       if (traits) {
         if (traits.firstName) window.__GS_USER__.firstName = traits.firstName;
         if (traits.company) window.__GS_USER__.company = traits.company;
       }
 
       // Re-fetch all zones with the new identity
+      var displayKey = matchKeys.email || Object.values(matchKeys)[0];
       setTimeout(function () {
         var allZoneIds = Object.keys(zones);
         if (allZoneIds.length > 0) {
-          console.debug('[GS] Mid-session upgrade: re-fetching ' + allZoneIds.length + ' zones for ' + email);
+          console.debug('[GS] Mid-session upgrade: re-fetching ' + allZoneIds.length + ' zones for ' + displayKey);
           connect(allZoneIds);
         }
       }, 500); // short delay to let identify POST complete

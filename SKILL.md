@@ -272,7 +272,11 @@ Auth provides email. `data-gs-identify` tells Edge API to load the full record i
 // All methods are on the global window.GS object
 
 // Identify visitor (triggers mid-session zone refresh after 500ms)
-GS.identify(email: string, traits?: object): void
+// Accepts email string (legacy) or object of match keys (multi-key)
+GS.identify(keysOrEmail: string | Record<string, string>, traits?: object): void
+// Examples:
+//   GS.identify("don@liftai.com", { firstName: "Don" })
+//   GS.identify({ email: "don@liftai.com", website: "https://liftai.com" }, { firstName: "Don" })
 
 // Track custom event (batched, sent every 5 seconds)
 GS.track(eventType: string, properties?: object): void
@@ -303,7 +307,7 @@ GS.debug(): object
 | `meta` | `{ tier, location, uid }` | Identity resolved, connection established |
 | `done` | `{ zones, duration_ms }` | All zones delivered |
 | `error` | `{ zone?, code, message }` | A zone failed or connection error |
-| `identify` | `{ email, traits }` | `GS.identify()` was called |
+| `identify` | `{ matchKeys, traits }` | `GS.identify()` was called |
 | `memorize` | `{ target, value }` | A memorize write was queued |
 | `tier:upgrade` | `{ newTier, reason, rerender }` | Tier upgrade mid-session |
 | `consent` | `{ essential, analytics, marketing }` | `GS.consent()` was called |

@@ -57,6 +57,7 @@ Mix all three on the same page. Property zones cost zero. All generative zones a
 | [abm-landing-page.html](examples/abm-landing-page.html) | ABM outbound — property zones + `/for/:slug` identification |
 | [saas-dashboard.html](examples/saas-dashboard.html) | Logged-in app — `window.__GS_USER__` auth session |
 | [lead-capture.html](examples/lead-capture.html) | Lead form — `GS.identify()` + memorize + mid-session re-render |
+| [multi-key-identify.html](examples/multi-key-identify.html) | Multi-key identification — email + website + phone + CRM IDs |
 
 Each example is a single HTML file. Replace `pk_test_YOUR_KEY` with your key and open in a browser.
 
@@ -65,7 +66,8 @@ Each example is a single HTML file. Replace `pk_test_YOUR_KEY` with your key and
 ## JavaScript API
 
 ```javascript
-GS.identify(email, { firstName, company })  // Identify visitor, auto-refresh zones
+GS.identify(email, { firstName, company })  // Legacy: single email
+GS.identify({ email, website, phone }, traits) // Multi-key: any match keys
 GS.track(event, properties)                 // Track event (batched every 5s)
 GS.memorize('collection:property', value)   // Write to Personize memory
 GS.consent({ analytics, marketing })        // Set consent (overrides OneTrust/CookieBot/Osano)

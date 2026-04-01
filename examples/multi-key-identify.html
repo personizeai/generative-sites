@@ -1,0 +1,146 @@
+<!--
+  SCENARIO: Multi-key identification — identify visitors with any combination of keys
+  WHAT YOU NEED: A Personize site key (pk_test_... or pk_live_...)
+  HOW TO TEST: Fill in the form fields (email + any optional keys) and submit
+  WHAT YOU'LL SEE: The visitor is identified via multiple match keys, zones re-render
+
+  This example shows:
+  - GS.identify() with an object of match keys (not just email)
+  - Any key names work: email, website, phone, hubspot_id, salesforce_id, etc.
+  - Backward compatible: GS.identify("email", traits) still works
+  - The Personize upsert API stores the record accessible via ALL supplied keys
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Key Identification</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: system-ui, sans-serif; color: #eef8ff; background: #06111f; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; padding: 60px 24px; }
+    h1 { font-size: 2rem; line-height: 1.2; margin-bottom: 8px; }
+    h2 { font-size: 1.2rem; font-weight: 500; color: #79ecff; margin-bottom: 24px; }
+    p { color: #c6deee; font-size: 1rem; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 32px; }
+    form { display: grid; gap: 14px; }
+    label { font-size: 0.75rem; color: #98afc6; text-transform: uppercase; letter-spacing: 0.06em; }
+    input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(121,236,255,0.16); background: rgba(4,10,20,0.74); color: #eef8ff; font: inherit; }
+    .optional { font-size: 0.65rem; color: #5a7a94; font-weight: normal; text-transform: none; letter-spacing: 0; }
+    button { padding: 14px 28px; border-radius: 999px; border: 0; background: linear-gradient(135deg, #79ecff, #ffcf73); color: #03131e; font-weight: 700; cursor: pointer; font: inherit; }
+    .card { padding: 20px; border-radius: 16px; border: 1px solid rgba(121,236,255,0.12); background: rgba(255,255,255,0.03); margin-bottom: 16px; }
+    .card small { display: block; color: #98afc6; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    code { font-size: 0.85rem; color: #ffcf73; background: rgba(255,207,115,0.08); padding: 2px 6px; border-radius: 4px; }
+    .keys-sent { margin-top: 16px; padding: 14px; border-radius: 12px; background: rgba(121,236,255,0.06); border: 1px solid rgba(121,236,255,0.12); font-family: monospace; font-size: 0.82rem; color: #79ecff; white-space: pre-wrap; display: none; }
+    [data-gs-zone] { transition: opacity 0.2s ease; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- Replace pk_test_YOUR_KEY with your actual Personize site key -->
+  <script src="https://gs.personize.ai/gs.js" data-key="pk_test_YOUR_KEY" async></script>
+
+  <div class="container">
+    <h1 data-gs-zone="hero.headline">Identify visitors with any key</h1>
+    <h2>Multi-key identification for flexible CRM matching</h2>
+
+    <p>
+      <code>GS.identify()</code> now accepts an object of match keys instead of just an email.
+      Pass any combination: email, website, phone, HubSpot ID, Salesforce ID, custom CRM keys.
+      The record becomes accessible via <strong>any</strong> of the supplied keys.
+    </p>
+
+    <div class="grid">
+      <form id="identify-form">
+        <div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required placeholder="don@liftai.com">
+        </div>
+        <div>
+          <label for="website">Website <span class="optional">(optional)</span></label>
+          <input id="website" name="website" type="url" placeholder="https://liftai.com">
+        </div>
+        <div>
+          <label for="phone">Phone <span class="optional">(optional)</span></label>
+          <input id="phone" name="phone" type="tel" placeholder="+15551234567">
+        </div>
+        <div>
+          <label for="crm_id">CRM ID <span class="optional">(optional &mdash; any key name)</span></label>
+          <input id="crm_id" name="crm_id" type="text" placeholder="hs_12345 or sf_67890">
+        </div>
+        <div>
+          <label for="first_name">First name</label>
+          <input id="first_name" name="first_name" type="text" required placeholder="Don">
+        </div>
+        <div>
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" required placeholder="Lift AI">
+        </div>
+        <button type="submit">Identify with multiple keys</button>
+        <div id="keys-sent" class="keys-sent"></div>
+      </form>
+
+      <div>
+        <div class="card">
+          <small>hero.subtitle (generated)</small>
+          <p data-gs-zone="hero.subtitle"
+             data-gs-prompt="Write a personalized subtitle for this visitor. Max 20 words.">
+            Fill in the form to see personalized content appear here.
+          </p>
+        </div>
+        <div class="card">
+          <small>value_prop (generated)</small>
+          <p data-gs-zone="value_prop"
+             data-gs-prompt="Write a value proposition tailored to the visitor's company and role. Max 2 sentences.">
+            Multi-key identification means your CRM records stay connected across every touchpoint.
+          </p>
+        </div>
+        <div class="card">
+          <small>How it works</small>
+          <p style="font-size: 0.9rem; color: #98afc6;">
+            Each key you provide becomes a recall path. Later, when <em>any</em> of these keys
+            appear (in a form, URL, cookie, or API call), Personize finds the same record.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('identify-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.target;
+
+      // Build matchKeys from filled-in fields — only include non-empty values
+      var matchKeys = {};
+      var email = form.email.value.trim();
+      var website = form.website.value.trim();
+      var phone = form.phone.value.trim();
+      var crmId = form.crm_id.value.trim();
+
+      if (email) matchKeys.email = email;
+      if (website) matchKeys.website = website;
+      if (phone) matchKeys.phone = phone;
+      if (crmId) matchKeys.crm_id = crmId;
+
+      // Build traits (non-key metadata about the visitor)
+      var traits = {};
+      var firstName = form.first_name.value.trim();
+      var company = form.company.value.trim();
+      if (firstName) traits.firstName = firstName;
+      if (company) traits.company = company;
+
+      // Identify with multiple keys — the visitor record is now accessible via ANY of them
+      if (window.GS) {
+        GS.identify(matchKeys, traits);
+      }
+
+      // Show what was sent
+      var display = document.getElementById('keys-sent');
+      display.style.display = 'block';
+      display.textContent = 'GS.identify(' + JSON.stringify(matchKeys, null, 2) + ', ' + JSON.stringify(traits) + ')';
+    });
+  </script>
+</body>
+</html>

@@ -20,7 +20,7 @@ For AI agent integration, see [SKILL.md](../SKILL.md). For backend setup (schema
 
 | Method | What It Does |
 |---|---|
-| `GS.identify(email, traits)` | Identify visitor + auto-refresh all zones (mid-session upgrade) |
+| `GS.identify(keysOrEmail, traits)` | Identify visitor + auto-refresh all zones (mid-session upgrade). Accepts a string (email) or object of match keys (`{ email, website, phone, ... }`). |
 | `GS.track(event, properties)` | Track custom event (batched, sent every 5s) |
 | `GS.memorize(target, value)` | Write to collection:property for current visitor |
 | `GS.consent({ analytics, marketing })` | Set consent levels (overrides auto-detected managers) |
@@ -597,12 +597,14 @@ When `GS.identify()` is called, gs.js:
 All zones re-render with personalized content for the identified contact.
 
 ```javascript
-// Visitor fills a form → call identify → zones auto-refresh
-document.querySelector('form').addEventListener('submit', function(e) {
-  var email = document.querySelector('[name=email]').value;
-  GS.identify(email, { firstName: 'Sarah' });
-  // All zones will re-render with Sarah's content ~500ms later
-});
+// Legacy: single email
+GS.identify('sarah@acme.com', { firstName: 'Sarah' });
+
+// Multi-key: any combination of match keys
+GS.identify({ email: 'sarah@acme.com', website: 'https://acme.com' }, { firstName: 'Sarah' });
+
+// CRM keys: use whatever identifiers your system tracks
+GS.identify({ email: 'sarah@acme.com', hubspot_id: 'hs_12345', phone: '+1555123456' }, traits);
 ```
 
 ---
@@ -663,8 +665,9 @@ Requires **marketing consent** — skipped if consent is denied.
 ## JavaScript API Reference
 
 ```javascript
-// Identify (triggers mid-session zone refresh)
+// Identify — string (legacy) or object of match keys
 GS.identify('sarah@acme.com', { firstName: 'Sarah', company: 'Acme Corp' });
+GS.identify({ email: 'sarah@acme.com', website: 'https://acme.com' }, { firstName: 'Sarah' });
 
 // Track events (batched, sent every 5s)
 GS.track('feature_used', { feature: 'batch-api' });
