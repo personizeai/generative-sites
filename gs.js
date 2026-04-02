@@ -219,6 +219,7 @@
         fallback: el.textContent,
         prompt: el.getAttribute('data-gs-prompt') || null,
         mode: el.getAttribute('data-gs-mode') || 'auto',
+        maxSteps: parseInt(el.getAttribute('data-gs-steps')) || 0,
         rendered: false,
       };
       newZones.push(id);
@@ -306,15 +307,20 @@
       'url=' + encodeURIComponent(window.location.href),
     ];
 
-    // Custom prompts from data-gs-prompt
+    // Custom prompts from data-gs-prompt and max steps from data-gs-steps
     var prompts = {};
     var hasPrompts = false;
+    var maxSteps = 0;
     for (var i = 0; i < zoneIds.length; i++) {
       var z = zones[zoneIds[i]];
       if (z && z.prompt) { prompts[zoneIds[i]] = z.prompt; hasPrompts = true; }
+      if (z && z.maxSteps > maxSteps) maxSteps = z.maxSteps;
     }
     if (hasPrompts) {
       params.push('prompts=' + encodeURIComponent(JSON.stringify(prompts)));
+    }
+    if (maxSteps > 0) {
+      params.push('max_steps=' + maxSteps);
     }
 
     if (document.referrer) {
