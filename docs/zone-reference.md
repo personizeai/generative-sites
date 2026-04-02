@@ -13,6 +13,7 @@ For AI agent integration, see [SKILL.md](../SKILL.md). For backend setup (schema
 | `data-gs-zone` | Yes | What to display — a property value or AI-generated text |
 | `data-gs-identify` | Once per page | How to find the record — which collection:property matches the visitor |
 | `data-gs-prompt` | Optional | Custom instructions for AI-generated zones |
+| `data-gs-steps` | Optional | Max agent steps (tool-use rounds) for research-heavy prompts. Default 5, max 20. |
 | `data-gs-memorize` | Optional | Capture input and write it back to Personize |
 | `data-gs-trigger` | Optional | When to capture (blur, change, submit, click) |
 

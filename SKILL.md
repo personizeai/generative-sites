@@ -167,6 +167,23 @@ For local development or self-hosted edge:
 "Value proposition for API-first engineering teams, 2 sentences max"
 ```
 
+### data-gs-steps (OPTIONAL — agent research depth for complex prompts)
+
+```html
+<div data-gs-zone="company_analysis"
+     data-gs-prompt="Research this visitor's company online. Find recent news and product updates. Then write a compelling analysis of how we can help them."
+     data-gs-steps="10">
+  Loading analysis...
+</div>
+```
+
+**Rules:**
+- Controls how many tool-use rounds the AI agent gets (search online, browse websites, etc.)
+- Default: 5 (enough for simple generation). Max: 20.
+- Only useful when `data-gs-prompt` asks the agent to research, search, or browse
+- Higher values = more thorough research but slower generation
+- Without this attribute, behavior is unchanged (5 steps, no research)
+
 ### data-gs-memorize (OPTIONAL — capture visitor input to Personize memory)
 
 ```html
