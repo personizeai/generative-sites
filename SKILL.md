@@ -564,13 +564,15 @@ GS.render()         // zones render automatically
 
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `gs.personize.ai/api/gs/stream` | GET (SSE) | Streams personalized zone text |
+| `gs.personize.ai/api/gs/stream` | POST (preferred) / GET (legacy) | Streams personalized zone text via SSE |
 | `gs.personize.ai/api/gs/event` | POST | Batched event ingestion |
-| `gs.personize.ai/api/gs/identify` | POST | Explicit visitor identification |
+| `gs.personize.ai/api/gs/identify` | POST | Explicit visitor identification (supports matchKeys) |
 | `gs.personize.ai/api/gs/memorize` | POST | Write to collection:property |
 | `gs.personize.ai/health` | GET | Health check |
 
 Users never call these directly. gs.js handles all communication.
+
+**Transport:** gs.js uses `fetch(POST)` with `ReadableStream` SSE parsing (not `EventSource`). This removes URL length limits — prompts and params go in the JSON body. GET is still supported for backward compatibility.
 
 ---
 
@@ -579,10 +581,12 @@ Users never call these directly. gs.js handles all communication.
 1. **Text only.** gs.js replaces `textContent`. No HTML, no images, no layout changes.
 2. **Max 20 zones per page.** Rate limited at the Edge API.
 3. **One `data-gs-identify` per page.** Multiple identifiers are not supported.
-4. **Property zones need stored data.** If no value exists in Personize memory, fallback text stays.
+4. **Property zones with custom prompts fall through to AI.** If no value exists in Personize memory but a `data-gs-prompt` is set, the zone is AI-generated instead of showing fallback.
 5. **Memorize needs identified visitor.** Anonymous memorize writes are silently dropped.
 6. **Preview mode needs test key.** `?gs_preview` rejected with `pk_live_` keys.
 7. **`__GS_USER__` must be set BEFORE gs.js loads.** Script order matters.
 8. **Zone IDs must be unique.** Two elements with the same `data-gs-zone` value — only the first one gets content.
 9. **Consent is checked per-call.** If consent changes mid-session, new calls respect the new state.
 10. **UTMs are forwarded, not stored.** They're used as AI context for that request only.
+11. **`data-gs-steps` controls research depth.** Default 5 steps. Set higher (e.g. 10) when prompts ask the agent to search online or research. Max 20.
+12. **`GS.identify()` supports multi-key.** Pass `{ email, website, phone, hubspot_id }` as first arg — any key names work. String (email only) still supported for backward compatibility.
