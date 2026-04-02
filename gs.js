@@ -27,7 +27,19 @@
 
   // --- Config -----------------------------------------------------------
 
+  // Find the script tag — document.currentScript works for inline scripts,
+  // but is null in React/Next.js (Script component, dynamic injection).
+  // Fallback: search for a script tag with data-key or matching src.
   var scriptTag = document.currentScript;
+  if (!scriptTag) {
+    var candidates = document.querySelectorAll('script[data-key]');
+    if (candidates.length > 0) {
+      scriptTag = candidates[candidates.length - 1]; // last one wins
+    } else {
+      candidates = document.querySelectorAll('script[src*="gs.js"]');
+      if (candidates.length > 0) scriptTag = candidates[candidates.length - 1];
+    }
+  }
 
   var scriptOrigin = null;
   if (scriptTag && scriptTag.src) {
@@ -36,18 +48,17 @@
 
   var config = {
     key: scriptTag ? scriptTag.getAttribute('data-key') : null,
-    endpoint: scriptTag ? scriptTag.getAttribute('data-endpoint') : scriptOrigin,
+    endpoint: scriptTag ? (scriptTag.getAttribute('data-endpoint') || scriptOrigin) : null,
     transition: scriptTag ? scriptTag.getAttribute('data-transition') !== 'false' : true,
   };
 
   if (!config.key) {
-    console.warn('[GS] Missing data-key on script tag.');
+    console.warn('[GS] Missing data-key. Add data-key="pk_live_..." to the gs.js script tag.');
     return;
   }
 
   if (!config.endpoint) {
-    console.warn('[GS] Could not determine endpoint. Add data-endpoint to the script tag.');
-    return;
+    config.endpoint = 'https://gs.personize.ai';
   }
 
   // --- State ------------------------------------------------------------
@@ -461,6 +472,12 @@
         done: function (data) {
           streamCompleted = true;
           fireCallback('done', data || {});
+
+          // Auto-memorize generated zone content back to properties.
+          // On return visits, property zones load instantly (no AI generation needed).
+          if (identifyConfig && isAllowed('memorize')) {
+            autoMemorizeZones(zoneIds);
+          }
         },
         upgrade: function (data) {
           fireCallback('tier:upgrade', data);
@@ -499,6 +516,48 @@
     });
 
     if (getURLParam('gs')) cleanURL('gs');
+  }
+
+  // --- Auto-Memorize (generated → property) ------------------------------
+
+  /**
+   * After streaming completes, memorize each generated zone's content back
+   * as a property value. On return visits, the property zone path serves
+   * the stored value instantly — no AI generation needed.
+   *
+   * Only memorizes zones that:
+   *   - Were rendered (have content)
+   *   - Use the identify collection (data-gs-identify)
+   *   - Are not already property zones (those already have stored values)
+   */
+  function autoMemorizeZones(zoneIds) {
+    if (!identifyConfig) return;
+    var collection = identifyConfig.collection;
+
+    for (var i = 0; i < zoneIds.length; i++) {
+      var id = zoneIds[i];
+      var zone = zones[id];
+      if (!zone || !zone.rendered) continue;
+
+      // Determine the property name to memorize under.
+      // If zone is "collection:property", use the property part.
+      // If zone is flat (no colon), use the zone ID as property name.
+      var property;
+      var colonIdx = id.indexOf(':');
+      if (colonIdx > 0) {
+        var zoneCollection = id.substring(0, colonIdx);
+        property = id.substring(colonIdx + 1);
+        // Only memorize if the zone's collection matches the identify collection
+        if (zoneCollection !== collection) continue;
+      } else {
+        property = id.replace(/\./g, '_'); // hero.headline → hero_headline
+      }
+
+      var text = zone.el.textContent;
+      if (text && text !== zone.fallback) {
+        queueMemorize(collection + ':' + property, text);
+      }
+    }
   }
 
   // --- Memorize Discovery (opt-in) --------------------------------------
