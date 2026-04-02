@@ -30,6 +30,55 @@ For local development or self-hosted edge:
 
 `data-endpoint` is only needed when NOT using the default `gs.personize.ai` host.
 
+### React / Next.js Installation
+
+`document.currentScript` is `null` when scripts are loaded via `<Script>` component or `document.createElement`. gs.js handles this automatically by searching the DOM for `script[data-key]`. Both patterns work:
+
+**Next.js (App Router):**
+```tsx
+import Script from 'next/script';
+
+export default function Layout({ children }) {
+  return (
+    <>
+      <Script
+        src="https://gs.personize.ai/gs.js"
+        data-key="pk_live_SITE_KEY"
+        strategy="afterInteractive"
+      />
+      {children}
+    </>
+  );
+}
+```
+
+**React (dynamic injection):**
+```tsx
+useEffect(() => {
+  const script = document.createElement('script');
+  script.src = 'https://gs.personize.ai/gs.js';
+  script.setAttribute('data-key', 'pk_live_SITE_KEY');
+  script.async = true;
+  document.head.appendChild(script);
+}, []);
+```
+
+Both work identically to the plain HTML script tag. All `data-gs-*` attributes on your JSX elements work as normal.
+
+## Auto-Memorize (Return Visitor Caching)
+
+After zones finish streaming, gs.js automatically memorizes each generated zone's text content back to Personize as property values. This means:
+
+- **First visit:** AI generates content → auto-memorized as properties
+- **Return visit:** Property zones load stored values **instantly** (no AI generation)
+
+This only happens when:
+- `data-gs-identify` is set on the page (so there's a collection to write to)
+- The visitor is identified (via form, auth, or cookie)
+- Analytics consent is allowed
+
+No configuration needed — it's automatic. The zone ID becomes the property name (e.g. zone `proposal:headline` memorizes to the `headline` property in the `proposal` collection).
+
 ---
 
 ## HTML Attributes — Exact Syntax
