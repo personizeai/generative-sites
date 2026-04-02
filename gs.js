@@ -367,9 +367,11 @@
   }
 
   var reconnectAttempts = 0;
+  var streamDone = false;
 
   function connect(zoneIds) {
     if (!zoneIds.length) return;
+    streamDone = false;
     var url = buildStreamURL(zoneIds);
 
     if (eventSource) eventSource.close();
@@ -393,6 +395,8 @@
 
     eventSource.addEventListener('done', function (e) {
       fireCallback('done', e.data ? JSON.parse(e.data) : {});
+      // Close cleanly — set flag so onerror doesn't trigger reconnect
+      streamDone = true;
       if (eventSource) { eventSource.close(); eventSource = null; }
     });
 
@@ -414,12 +418,24 @@
       }
     });
 
-    // [EXPONENTIAL BACKOFF] on connection errors
+    // [RECONNECT CONTROL] on connection errors
     eventSource.onerror = function () {
+      // If stream completed normally, don't reconnect
+      if (streamDone) {
+        if (eventSource) { eventSource.close(); eventSource = null; }
+        return;
+      }
+
       reconnectAttempts++;
-      var delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+      // Gentler backoff: 1s, 2s, 3s, 5s, 5s, 5s... (cap at 5s for first 30s)
+      var delay = Math.min(1000 * reconnectAttempts, 5000);
       console.debug('[GS] SSE interrupted. Reconnecting in ' + (delay / 1000) + 's...');
-      // EventSource auto-reconnects, but we track attempts for logging
+
+      // Close and manually reconnect with controlled delay
+      if (eventSource) { eventSource.close(); eventSource = null; }
+      setTimeout(function () {
+        if (!streamDone) connect(zoneIds);
+      }, delay);
     };
 
     if (getURLParam('gs')) cleanURL('gs');
