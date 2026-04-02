@@ -54,7 +54,7 @@
 
   var zones = {};
   var visitor = null;
-  var eventSource = null;
+  var eventSource = null; // legacy — kept for debug() compatibility
   var eventQueue = [];
   var memorizeQueue = [];
   var identified = false;
@@ -298,16 +298,20 @@
     fireCallback('zone:render', { zone: zoneId, text: text });
   }
 
-  // --- SSE Connection ---------------------------------------------------
+  // --- SSE Connection (fetch POST) ----------------------------------------
 
-  function buildStreamURL(zoneIds) {
-    var params = [
-      'key=' + encodeURIComponent(config.key),
-      'zones=' + encodeURIComponent(zoneIds.join(',')),
-      'url=' + encodeURIComponent(window.location.href),
-    ];
+  /**
+   * Build the JSON payload for POST /api/gs/stream.
+   * No URL length limits — prompts and params go in the body.
+   */
+  function buildStreamPayload(zoneIds) {
+    var payload = {
+      key: config.key,
+      zones: zoneIds.join(','),
+      url: window.location.href,
+    };
 
-    // Custom prompts from data-gs-prompt and max steps from data-gs-steps
+    // Custom prompts from data-gs-prompt
     var prompts = {};
     var hasPrompts = false;
     var maxSteps = 0;
@@ -316,127 +320,183 @@
       if (z && z.prompt) { prompts[zoneIds[i]] = z.prompt; hasPrompts = true; }
       if (z && z.maxSteps > maxSteps) maxSteps = z.maxSteps;
     }
-    if (hasPrompts) {
-      params.push('prompts=' + encodeURIComponent(JSON.stringify(prompts)));
-    }
-    if (maxSteps > 0) {
-      params.push('max_steps=' + maxSteps);
-    }
+    if (hasPrompts) payload.prompts = prompts;
+    if (maxSteps > 0) payload.max_steps = maxSteps;
 
-    if (document.referrer) {
-      params.push('ref=' + encodeURIComponent(document.referrer));
-    }
+    if (document.referrer) payload.ref = document.referrer;
 
-    // Cookie (if consent allows)
+    // Cookie
     if (isAllowed('cookie')) {
       var uid = getCookie('_gs_uid');
-      if (uid) params.push('uid=' + encodeURIComponent(uid));
+      if (uid) payload.uid = uid;
     }
 
     // Encrypted token (?gs=...)
     var gsToken = getURLParam('gs');
-    if (gsToken) params.push('token=' + encodeURIComponent(gsToken));
+    if (gsToken) payload.token = gsToken;
 
-    // [PREVIEW MODE] ?gs_preview=email overrides identification
+    // Preview mode
     var preview = getURLParam('gs_preview');
-    if (preview) {
-      params.push('preview=' + encodeURIComponent(preview));
-    }
+    if (preview) payload.preview = preview;
 
     // Identify via data-gs-identify
     if (identifyConfig) {
-      params.push('identify_collection=' + encodeURIComponent(identifyConfig.collection));
-      params.push('identify_property=' + encodeURIComponent(identifyConfig.property));
-      if (identifyConfig.value) {
-        params.push('identify_value=' + encodeURIComponent(identifyConfig.value));
-      }
+      payload.identify_collection = identifyConfig.collection;
+      payload.identify_property = identifyConfig.property;
+      if (identifyConfig.value) payload.identify_value = identifyConfig.value;
     }
 
     // Auth session
     if (window.__GS_USER__) {
-      try {
-        params.push('auth=' + encodeURIComponent(btoa(JSON.stringify(window.__GS_USER__))));
-      } catch (e) {}
+      try { payload.auth = btoa(JSON.stringify(window.__GS_USER__)); } catch (e) {}
     }
 
     // UTM parameters
     var utms = collectUTMs();
-    if (utms) params.push('utms=' + encodeURIComponent(JSON.stringify(utms)));
+    if (utms) payload.utms = utms;
 
-    return config.endpoint + '/api/gs/stream?' + params.join('&');
+    return payload;
   }
 
+  var activeAbort = null; // AbortController for current stream
   var reconnectAttempts = 0;
-  var streamDone = false;
+
+  /**
+   * Parse SSE events from a ReadableStream.
+   * Calls handlers for each event type (zone, meta, done, error, upgrade).
+   */
+  function processSSEStream(reader, handlers) {
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    function pump() {
+      reader.read().then(function (result) {
+        if (result.done) {
+          // Flush remaining buffer
+          if (buffer.trim()) processBuffer();
+          if (handlers.onClose) handlers.onClose();
+          return;
+        }
+
+        buffer += decoder.decode(result.value, { stream: true });
+        processBuffer();
+        pump();
+      }).catch(function (err) {
+        if (err.name !== 'AbortError') {
+          console.debug('[GS] Stream read error:', err.message);
+          if (handlers.onError) handlers.onError(err);
+        }
+      });
+    }
+
+    function processBuffer() {
+      var parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+
+      for (var i = 0; i < parts.length; i++) {
+        var eventType = null;
+        var dataLines = [];
+        var lines = parts[i].split('\n');
+        for (var j = 0; j < lines.length; j++) {
+          var line = lines[j];
+          if (line.indexOf('event: ') === 0) {
+            eventType = line.slice(7).trim();
+          } else if (line.indexOf('data: ') === 0) {
+            dataLines.push(line.slice(6));
+          } else if (line.indexOf('data:') === 0) {
+            dataLines.push(line.slice(5));
+          }
+        }
+        if (eventType && dataLines.length > 0) {
+          try {
+            var data = JSON.parse(dataLines.join('\n'));
+            if (handlers[eventType]) handlers[eventType](data);
+          } catch (e) {}
+        }
+      }
+    }
+
+    pump();
+  }
 
   function connect(zoneIds) {
     if (!zoneIds.length) return;
-    streamDone = false;
-    var url = buildStreamURL(zoneIds);
 
-    if (eventSource) eventSource.close();
-    eventSource = new EventSource(url);
+    // Abort previous stream if still active
+    if (activeAbort) { activeAbort.abort(); activeAbort = null; }
 
-    eventSource.addEventListener('zone', function (e) {
-      try {
-        var data = JSON.parse(e.data);
-        if (data.zone && data.text) renderZone(data.zone, data.text);
-      } catch (err) {}
-    });
+    var controller = new AbortController();
+    activeAbort = controller;
 
-    eventSource.addEventListener('meta', function (e) {
-      try {
-        visitor = JSON.parse(e.data);
-        if (visitor.uid && isAllowed('cookie')) setCookie('_gs_uid', visitor.uid, 365);
-        reconnectAttempts = 0; // reset on successful connection
-        fireCallback('meta', visitor);
-      } catch (err) {}
-    });
+    var payload = buildStreamPayload(zoneIds);
+    var streamCompleted = false;
 
-    eventSource.addEventListener('done', function (e) {
-      fireCallback('done', e.data ? JSON.parse(e.data) : {});
-      // Close cleanly — set flag so onerror doesn't trigger reconnect
-      streamDone = true;
-      if (eventSource) { eventSource.close(); eventSource = null; }
-    });
-
-    // [MID-SESSION UPGRADE] — server sends upgrade event with new zone data
-    eventSource.addEventListener('upgrade', function (e) {
-      try {
-        var data = JSON.parse(e.data);
-        fireCallback('tier:upgrade', data);
-        // Re-render zones listed in the upgrade
-        if (data.rerender && data.rerender.length > 0) {
-          console.debug('[GS] Tier upgrade to ' + data.newTier + ' — re-rendering zones:', data.rerender);
-        }
-      } catch (err) {}
-    });
-
-    eventSource.addEventListener('error', function (e) {
-      if (e.data) {
-        try { fireCallback('error', JSON.parse(e.data)); } catch (err) {}
+    fetch(config.endpoint + '/api/gs/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    }).then(function (response) {
+      if (!response.ok) {
+        console.error('[GS] Stream request failed:', response.status);
+        return;
       }
-    });
-
-    // [RECONNECT CONTROL] on connection errors
-    eventSource.onerror = function () {
-      // If stream completed normally, don't reconnect
-      if (streamDone) {
-        if (eventSource) { eventSource.close(); eventSource = null; }
+      if (!response.body) {
+        console.error('[GS] Stream response has no body (browser may not support ReadableStream)');
         return;
       }
 
-      reconnectAttempts++;
-      // Gentler backoff: 1s, 2s, 3s, 5s, 5s, 5s... (cap at 5s for first 30s)
-      var delay = Math.min(1000 * reconnectAttempts, 5000);
-      console.debug('[GS] SSE interrupted. Reconnecting in ' + (delay / 1000) + 's...');
+      reconnectAttempts = 0;
+      var reader = response.body.getReader();
 
-      // Close and manually reconnect with controlled delay
-      if (eventSource) { eventSource.close(); eventSource = null; }
-      setTimeout(function () {
-        if (!streamDone) connect(zoneIds);
-      }, delay);
-    };
+      processSSEStream(reader, {
+        zone: function (data) {
+          if (data.zone && data.text) renderZone(data.zone, data.text);
+        },
+        meta: function (data) {
+          visitor = data;
+          if (visitor.uid && isAllowed('cookie')) setCookie('_gs_uid', visitor.uid, 365);
+          fireCallback('meta', visitor);
+        },
+        done: function (data) {
+          streamCompleted = true;
+          fireCallback('done', data || {});
+        },
+        upgrade: function (data) {
+          fireCallback('tier:upgrade', data);
+          if (data.rerender && data.rerender.length > 0) {
+            console.debug('[GS] Tier upgrade to ' + data.newTier + ' — re-rendering zones:', data.rerender);
+          }
+        },
+        error: function (data) {
+          fireCallback('error', data);
+        },
+        onClose: function () {
+          activeAbort = null;
+        },
+        onError: function () {
+          // Connection error — retry with gentle backoff (only if stream didn't complete)
+          activeAbort = null;
+          if (streamCompleted) return;
+          reconnectAttempts++;
+          var delay = Math.min(1000 * reconnectAttempts, 5000);
+          console.debug('[GS] SSE interrupted. Reconnecting in ' + (delay / 1000) + 's...');
+          setTimeout(function () {
+            if (!streamCompleted) connect(zoneIds);
+          }, delay);
+        },
+      });
+    }).catch(function (err) {
+      if (err.name === 'AbortError') return;
+      console.error('[GS] Stream fetch failed:', err.message);
+      activeAbort = null;
+      // Retry on network failure
+      if (!streamCompleted) {
+        reconnectAttempts++;
+        var delay = Math.min(1000 * reconnectAttempts, 5000);
+        setTimeout(function () { connect(zoneIds); }, delay);
+      }
+    });
 
     if (getURLParam('gs')) cleanURL('gs');
   }
@@ -637,7 +697,8 @@
         zones: Object.keys(zones).map(function (id) {
           return { id: id, fallback: zones[id].fallback, rendered: zones[id].rendered, currentText: zones[id].el.textContent };
         }),
-        connected: eventSource !== null && eventSource.readyState !== 2,
+        connected: activeAbort !== null,
+        transport: 'fetch-sse',
         preview: getURLParam('gs_preview'),
       };
     },
