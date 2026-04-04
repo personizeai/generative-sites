@@ -276,12 +276,17 @@
       }
 
       if (hasNewZones) {
-        var newIds = discoverZones();
-        discoverMemorizeBindings();
-        if (newIds.length > 0) {
-          console.debug('[GS] SPA: found ' + newIds.length + ' new zones:', newIds);
-          connect(newIds);
-        }
+        // Debounce: React renders in batches — wait for all zones to land
+        // before connecting. Collects zones across rapid DOM mutations.
+        clearTimeout(startObserver._debounce);
+        startObserver._debounce = setTimeout(function () {
+          var newIds = discoverZones();
+          discoverMemorizeBindings();
+          if (newIds.length > 0) {
+            console.debug('[GS] SPA: found ' + newIds.length + ' new zones:', newIds);
+            connect(newIds);
+          }
+        }, 50); // 50ms — fast enough to feel instant, long enough for React batching
       }
     });
 
@@ -615,6 +620,11 @@
     if (!target || !value) return;
     memorizeQueue.push({ target: target, value: value, url: window.location.href, timestamp: Date.now() });
     fireCallback('memorize', { target: target, value: value });
+
+    // Auto-flush after short delay — don't wait for the 5s interval.
+    // Debounced: multiple rapid calls batch into one flush.
+    clearTimeout(queueMemorize._timer);
+    queueMemorize._timer = setTimeout(flushMemorize, 200);
   }
 
   function flushMemorize() {
@@ -721,6 +731,15 @@
         return;
       }
       queueMemorize(target, value);
+    },
+
+    /**
+     * Force-flush all pending memorize and event queues immediately.
+     * Useful in React/SPA where beforeunload doesn't fire on navigation.
+     */
+    flush: function () {
+      flushMemorize();
+      flushEvents();
     },
 
     /**
