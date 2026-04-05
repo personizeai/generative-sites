@@ -72,6 +72,23 @@
   var identifyConfig = null;
   var consentState = null; // [CONSENT BRIDGE] consent levels
 
+  // --- HTTP helper -------------------------------------------------------
+
+  /**
+   * POST JSON payload via fetch (CORS-safe).
+   * Falls back to sendBeacon for beforeunload where fetch may be cancelled.
+   */
+  function postJSON(url, body, onError) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body,
+      keepalive: true, // survives page unload like sendBeacon
+    }).catch(function () {
+      if (onError) onError();
+    });
+  }
+
   // --- Cookie helpers ---------------------------------------------------
 
   function getCookie(name) {
@@ -630,19 +647,15 @@
   function flushMemorize() {
     if (memorizeQueue.length === 0) return;
     var batch = memorizeQueue.splice(0, 20);
-    try {
-      navigator.sendBeacon(
-        config.endpoint + '/api/gs/memorize',
-        new Blob([JSON.stringify({
-          key: config.key,
-          uid: getCookie('_gs_uid'),
-          email: getVisitorEmail(),
-          writes: batch,
-        })], { type: 'application/json' })
-      );
-    } catch (e) {
+    var payload = JSON.stringify({
+      key: config.key,
+      uid: getCookie('_gs_uid'),
+      email: getVisitorEmail(),
+      writes: batch,
+    });
+    postJSON(config.endpoint + '/api/gs/memorize', payload, function () {
       memorizeQueue = batch.concat(memorizeQueue);
-    }
+    });
   }
 
   function getVisitorEmail() {
@@ -687,14 +700,9 @@
 
       identified = true;
 
-      try {
-        navigator.sendBeacon(
-          config.endpoint + '/api/gs/identify',
-          new Blob([JSON.stringify({
-            key: config.key, uid: getCookie('_gs_uid'), matchKeys: matchKeys, traits: traits || {},
-          })], { type: 'application/json' })
-        );
-      } catch (e) {}
+      postJSON(config.endpoint + '/api/gs/identify', JSON.stringify({
+        key: config.key, uid: getCookie('_gs_uid'), matchKeys: matchKeys, traits: traits || {},
+      }));
 
       fireCallback('identify', { matchKeys: matchKeys, traits: traits });
 
@@ -815,14 +823,10 @@
     if (!isAllowed('tracking')) return;
     if (eventQueue.length === 0) return;
     var batch = eventQueue.splice(0, 50);
-    try {
-      navigator.sendBeacon(
-        config.endpoint + '/api/gs/event',
-        new Blob([JSON.stringify({ key: config.key, uid: getCookie('_gs_uid'), events: batch })], { type: 'application/json' })
-      );
-    } catch (e) {
-      eventQueue = batch.concat(eventQueue);
-    }
+    postJSON(config.endpoint + '/api/gs/event',
+      JSON.stringify({ key: config.key, uid: getCookie('_gs_uid'), events: batch }),
+      function () { eventQueue = batch.concat(eventQueue); }
+    );
   }
 
   setInterval(flushEvents, 5000);
