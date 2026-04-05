@@ -102,7 +102,7 @@ const GOVERNANCE_VARIABLES = [
 async function createGovernance() {
   for (const variable of GOVERNANCE_VARIABLES) {
     try {
-      await client.governance.upsert({
+      await (client as any).governance.upsert({
         name: variable.name,
         slug: variable.slug,
         content: variable.content,

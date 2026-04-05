@@ -69,9 +69,9 @@ async function seedContacts() {
 
     try {
       await client.memory.memorize({
-        collection: WEBSITE_ZONES_COLLECTION,
+        collectionIds: [WEBSITE_ZONES_COLLECTION],
         content,
-        identifier: row.email,
+        email: row.email,
       });
       console.log(`[gs-seed] Seeded: ${row.first_name} (${row.email})`);
     } catch (err: any) {
