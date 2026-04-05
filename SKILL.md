@@ -193,6 +193,31 @@ No configuration needed — it's automatic. The zone ID becomes the property nam
 <!-- URL: ?customer_id=ACME-2024 → searches proposals where customer_id = ACME-2024 -->
 ```
 
+### data-gs-guidelines (OPTIONAL — governance guidelines for AI generation)
+
+Apply Personize governance guidelines to AI-generated zones. Guidelines are managed centrally in the Personize dashboard — only names appear in HTML.
+
+**Site-level** (applies to ALL zones on the site — set on script tag):
+```html
+<script src="https://gs.personize.ai/gs.js"
+        data-key="pk_live_SITE_KEY"
+        data-gs-guidelines="Brand Voice,Compliance Rules"
+        async></script>
+```
+
+**Zone-level** (extends site-level — additive, not replacement):
+```html
+<p data-gs-zone="cta"
+   data-gs-guidelines="CTA Best Practices,Urgency Policy"
+   data-gs-prompt="Write a compelling CTA.">Book a demo</p>
+```
+
+**Rules:**
+- Comma-separated guideline names (case-insensitive, resolved server-side)
+- Site-level + zone-level are merged and deduplicated per stream request
+- Only names are in HTML — actual guideline content stays server-side in Personize
+- If no guidelines specified, falls back to generic keyword-based guideline matching
+
 ### data-gs-prompt (OPTIONAL — custom instructions for generative zones)
 
 ```html

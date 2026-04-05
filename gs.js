@@ -50,6 +50,7 @@
     key: scriptTag ? scriptTag.getAttribute('data-key') : null,
     endpoint: scriptTag ? (scriptTag.getAttribute('data-endpoint') || scriptOrigin) : null,
     transition: scriptTag ? scriptTag.getAttribute('data-transition') !== 'false' : true,
+    guidelines: scriptTag ? (scriptTag.getAttribute('data-gs-guidelines') || '') : '',
   };
 
   if (!config.key) {
@@ -248,6 +249,7 @@
         prompt: el.getAttribute('data-gs-prompt') || null,
         mode: el.getAttribute('data-gs-mode') || 'auto',
         maxSteps: parseInt(el.getAttribute('data-gs-steps')) || 0,
+        guidelines: el.getAttribute('data-gs-guidelines') || '',
         rendered: false,
       };
       newZones.push(id);
@@ -344,17 +346,36 @@
       url: window.location.href,
     };
 
-    // Custom prompts from data-gs-prompt
+    // Custom prompts, max steps, and guidelines from zone attributes
     var prompts = {};
     var hasPrompts = false;
     var maxSteps = 0;
+    var guidelineSet = {};
+    // Start with site-level guidelines from script tag
+    if (config.guidelines) {
+      var siteNames = config.guidelines.split(',');
+      for (var g = 0; g < siteNames.length; g++) {
+        var name = siteNames[g].trim();
+        if (name) guidelineSet[name] = true;
+      }
+    }
     for (var i = 0; i < zoneIds.length; i++) {
       var z = zones[zoneIds[i]];
       if (z && z.prompt) { prompts[zoneIds[i]] = z.prompt; hasPrompts = true; }
       if (z && z.maxSteps > maxSteps) maxSteps = z.maxSteps;
+      // Merge zone-level guidelines (extends site-level)
+      if (z && z.guidelines) {
+        var zoneNames = z.guidelines.split(',');
+        for (var gn = 0; gn < zoneNames.length; gn++) {
+          var gname = zoneNames[gn].trim();
+          if (gname) guidelineSet[gname] = true;
+        }
+      }
     }
     if (hasPrompts) payload.prompts = prompts;
     if (maxSteps > 0) payload.max_steps = maxSteps;
+    var guidelineNames = Object.keys(guidelineSet);
+    if (guidelineNames.length > 0) payload.guidelines = guidelineNames;
 
     if (document.referrer) payload.ref = document.referrer;
 
